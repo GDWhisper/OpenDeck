@@ -391,6 +391,146 @@ pub async fn deactivate_plugins() {
 	}
 }
 
+/// Reconnect all webview plugins after system wake.
+///
+/// Webview plugins lose both their WebSocket connection AND their Web Worker
+/// timers when the system enters sleep.  The Elgato SDK uses a Web Worker
+/// (`timers.js`) that overrides `setTimeout`/`setInterval`; this Worker dies
+/// during sleep and does not resume, so even if the WebSocket were reconnected
+/// the plugin's timers (e.g. clock animations) would remain frozen.
+///
+/// The fix is a two-step process:
+///   1. Reload the webview page (`location.reload()`) — this gives the plugin
+///      a fresh JavaScript environment with a new Web Worker and fresh timer
+///      overrides.
+///   2. Restore native browser timers via a hidden iframe and re-evaluate the
+///      connection init JavaScript — this creates a new WebSocket to the
+///      OpenDeck server and sends `registerPlugin`.
+///
+/// We avoid closing and recreating the Tauri window because `window.close()`
+/// does not reliably destroy webviews on Windows.
+pub async fn reload_webview_plugins() {
+	let app = match APP_HANDLE.get() {
+		Some(app) => app,
+		None => return,
+	};
+
+	// Collect webview plugin UUIDs (don't hold lock across await points).
+	let webview_uuids: Vec<String> = {
+		let instances = INSTANCES.lock().await;
+		instances
+			.iter()
+			.filter(|(_, instance)| matches!(instance, PluginInstance::Webview))
+			.map(|(uuid, _)| uuid.clone())
+			.collect()
+	};
+
+	if webview_uuids.is_empty() {
+		return;
+	}
+
+	log::info!("Reconnecting {} webview plugin(s) after system wake", webview_uuids.len());
+
+	for uuid in webview_uuids {
+		log::info!("Reconnecting webview plugin: {}", uuid);
+
+		let window = match app.get_webview_window(&uuid.replace('.', "_")) {
+			Some(w) => w,
+			None => {
+				warn!("Webview window not found for plugin {}", uuid);
+				continue;
+			}
+		};
+
+		// Step 1: Reload the page.  This destroys the old (dead) Web Worker
+		// and loads all scripts fresh, including timers.js which creates a
+		// new Worker with working setTimeout/setInterval.
+		if let Err(e) = window.eval("location.reload()") {
+			error!("Failed to reload page for {}: {}", uuid, e);
+			continue;
+		}
+		log::info!("Page reload triggered for {}", uuid);
+
+		// Give the page time to start loading.  Scripts are loaded from the
+		// local webserver (localhost) so this is fast.  The init JS below
+		// also has its own retry mechanism for when the page isn't ready yet.
+		tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+
+		// Read the manifest to get the plugin version for the info parameter.
+		let plugin_dir = config_dir().join("plugins").join(&uuid);
+		let manifest = match manifest::read_manifest(&plugin_dir) {
+			Ok(m) => m,
+			Err(e) => {
+				warn!("Failed to read manifest for {}: {:#}", uuid, e);
+				continue;
+			}
+		};
+
+		let info = info_param::make_info(uuid.clone(), manifest.version, false).await;
+		let info_json = match serde_json::to_string(&info) {
+			Ok(j) => j,
+			Err(e) => {
+				warn!("Failed to serialise info for {}: {}", uuid, e);
+				continue;
+			}
+		};
+
+		// Step 2: Re-evaluate the connection init JavaScript.
+		//
+		// Before reconnecting, we restore native browser timers via a hidden
+		// iframe.  The Elgato SDK's `timers.js` overrides `window.setInterval`
+		// and `window.setTimeout` with Web Worker-based replacements.  After
+		// system sleep the Worker dies and all timers stop.  Even after a page
+		// reload the new Worker may be unreliable, so we bypass it entirely by
+		// restoring the native timer functions.
+		//
+		// The `opendeckReconnect` function then checks `document.readyState`
+		// and retries until the page is loaded, then calls the SDK's socket
+		// connection function which creates a fresh WebSocket.
+		let init_js = format!(
+			r#"(() => {{
+				// Restore native timers — the Worker-based ones may be dead.
+				try {{
+					const f = document.createElement('iframe');
+					f.style.display = 'none';
+					document.body.appendChild(f);
+					const w = f.contentWindow;
+					window.setInterval = w.setInterval.bind(w);
+					window.clearInterval = w.clearInterval.bind(w);
+					window.setTimeout = w.setTimeout.bind(w);
+					window.clearTimeout = w.clearTimeout.bind(w);
+					console.log('[opendeck] Native timers restored');
+				}} catch(e) {{
+					console.warn('[opendeck] Could not restore native timers:', e);
+				}}
+
+				const opendeckReconnect = () => {{
+					try {{
+						if (document.readyState !== "complete") throw new Error("not ready");
+						if (typeof connectOpenActionSocket === "function") connectOpenActionSocket({port}, "{uuid}", "{event}", `{info}`);
+						else connectElgatoStreamDeckSocket({port}, "{uuid}", "{event}", `{info}`);
+						console.log('[opendeck] WebSocket reconnect initiated');
+					}} catch (e) {{
+						setTimeout(opendeckReconnect, 50);
+					}}
+				}};
+				opendeckReconnect();
+			}})();
+			"#,
+			port = *PORT_BASE,
+			uuid = uuid,
+			event = "registerPlugin",
+			info = info_json
+		);
+
+		if let Err(e) = window.eval(&init_js) {
+			error!("Failed to eval reconnect JS for {}: {}", uuid, e);
+		} else {
+			log::info!("Reconnect JS evaluated for {}", uuid);
+		}
+	}
+}
+
 /// Initialise plugins from the plugins directory.
 pub fn initialise_plugins() {
 	tokio::spawn(init_websocket_server());
