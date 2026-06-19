@@ -400,9 +400,9 @@ pub async fn deactivate_plugins() {
 /// the plugin's timers (e.g. clock animations) would remain frozen.
 ///
 /// The fix is a two-step process:
-///   1. Reload the webview page (`location.reload()`) — this gives the plugin
-///      a fresh JavaScript environment with a new Web Worker and fresh timer
-///      overrides.
+///   1. Reload the webview page via Tauri's native `reload()` (which goes
+///      through the WebView2 controller, not the JS engine) — this gives
+///      the plugin a fresh JavaScript environment.
 ///   2. Restore native browser timers via a hidden iframe and re-evaluate the
 ///      connection init JavaScript — this creates a new WebSocket to the
 ///      OpenDeck server and sends `registerPlugin`.
@@ -442,10 +442,11 @@ pub async fn reload_webview_plugins() {
 			}
 		};
 
-		// Step 1: Reload the page.  This destroys the old (dead) Web Worker
-		// and loads all scripts fresh, including timers.js which creates a
-		// new Worker with working setTimeout/setInterval.
-		if let Err(e) = window.eval("location.reload()") {
+		// Step 1: Reload the page via Tauri's native reload (goes through
+		// the WebView2 controller, not the JS engine).  JS-level
+		// `location.reload()` becomes unreliable after system sleep —
+		// the eval returns Ok but the navigation never happens.
+		if let Err(e) = window.reload() {
 			error!("Failed to reload page for {}: {}", uuid, e);
 			continue;
 		}
