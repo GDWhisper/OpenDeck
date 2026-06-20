@@ -1,10 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 	<head>
+		<script src="i18n.js"></script>
 		<script>
 			let update = () => {};
 
 			function connectElgatoStreamDeckSocket(inPort, inPropertyInspectorUUID, inRegisterEvent, inInfo, inActionInfo) {
+				const info = JSON.parse(inInfo);
+				initI18n(info.application?.language);
 				const websocket = new WebSocket("ws://localhost:" + inPort);
 				inActionInfo = JSON.parse(inActionInfo);
 				websocket.onopen = () => {
@@ -16,8 +19,8 @@
 
 				if (inActionInfo.payload.controller == "Encoder") {
 					document.getElementById("encoder").style.display = "block";
-					document.getElementById("down-label").innerText = "Dial down";
-					document.getElementById("up-label").innerText = "Dial up";
+					document.getElementById("down-label").textContent = t("dialDown");
+					document.getElementById("up-label").textContent = t("dialUp");
 				}
 
 				const down = document.getElementById("down");
@@ -50,29 +53,29 @@
 	</head>
 	<body>
 		<div class="sdpi-item">
-			<div class="sdpi-item-label" id="down-label">Key down</div>
+			<div class="sdpi-item-label" id="down-label" data-i18n="keyDown">Key down</div>
 			<input id="down" oninput="update()" class="sdpi-item-value" style="font-family: monospace" />
 		</div>
 		<div class="sdpi-item">
-			<div class="sdpi-item-label" id="up-label">Key up</div>
+			<div class="sdpi-item-label" id="up-label" data-i18n="keyUp">Key up</div>
 			<input id="up" oninput="update()" class="sdpi-item-value" style="font-family: monospace" />
 		</div>
 		<div id="encoder" style="display: none">
 			<div class="sdpi-item">
-				<div class="sdpi-item-label">Dial rotate</div>
+				<div class="sdpi-item-label" data-i18n="dialRotate">Dial rotate</div>
 				<input id="rotate" oninput="update()" class="sdpi-item-value" style="font-family: monospace" />
 			</div>
-			<p style="padding-left: 0.75rem; padding-right: 0.75rem">
+			<p style="padding-left: 0.75rem; padding-right: 0.75rem" data-i18n="dialRotateHint" data-i18n-html>
 				Usages of <code>%d</code> will be substituted with the number of ticks turned, where negative values signify counterclockwise rotation and positive values signify clockwise rotation.
 			</p>
 		</div>
 		<br />
 		<div class="sdpi-item">
-			<div class="sdpi-item-label">Write to path</div>
+			<div class="sdpi-item-label" data-i18n="writeToPath">Write to path</div>
 			<input id="file" oninput="update()" class="sdpi-item-value" style="font-family: monospace" />
 		</div>
 		<div class="sdpi-item">
-			<div class="sdpi-item-label">Show on key</div>
+			<div class="sdpi-item-label" data-i18n="showOnKey">Show on key</div>
 			<input id="show" type="checkbox" oninput="update()" class="sdpi-item-value" />
 			<label for="show"><span></span></label>
 		</div>

@@ -1,11 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
 	<head>
+		<script src="i18n.js"></script>
 		<script>
 			let update = () => {};
 
 			function connectElgatoStreamDeckSocket(inPort, inPropertyInspectorUUID, inRegisterEvent, inInfo, inActionInfo) {
 				inActionInfo = JSON.parse(inActionInfo);
+				const info = JSON.parse(inInfo);
+				initI18n(info.application?.language);
 
 				if (inActionInfo.payload.controller == "Encoder") {
 					document.documentElement.innerHTML = "";
@@ -44,15 +47,15 @@
 	</head>
 	<body>
 		<div class="sdpi-item">
-			<div class="sdpi-item-label">Action</div>
+			<div class="sdpi-item-label" data-i18n="action">Action</div>
 			<select id="action" onchange="update()" class="sdpi-item-value select">
-				<option value="set">Set</option>
-				<option value="increase">Increase</option>
-				<option value="decrease">Decrease</option>
+				<option value="set" data-i18n="set">Set</option>
+				<option value="increase" data-i18n="increase">Increase</option>
+				<option value="decrease" data-i18n="decrease">Decrease</option>
 			</select>
 		</div>
 		<div class="sdpi-item">
-			<div class="sdpi-item-label">Value (<span id="value-display"></span>%)</div>
+			<div class="sdpi-item-label"><span data-i18n="value">Value</span> (<span id="value-display"></span>%)</div>
 			<input id="value" oninput="update()" class="sdpi-item-value" type="range" min="0" max="100" />
 		</div>
 	</body>

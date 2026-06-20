@@ -1,0 +1,23 @@
+{
+	"Name": "OpenDeck 入门包",
+	"com.amansprojects.starterpack.runcommand": {
+		"Name": "运行命令",
+		"Tooltip": "运行一条系统命令"
+	},
+	"com.amansprojects.starterpack.openurl": {
+		"Name": "打开链接",
+		"Tooltip": "打开一个网址"
+	},
+	"com.amansprojects.starterpack.inputsimulation": {
+		"Name": "模拟输入",
+		"Tooltip": "模拟鼠标或键盘输入"
+	},
+	"com.amansprojects.starterpack.switchprofile": {
+		"Name": "切换配置",
+		"Tooltip": "切换到选定的配置"
+	},
+	"com.amansprojects.starterpack.devicebrightness": {
+		"Name": "设备亮度",
+		"Tooltip": "调整设备亮度"
+	}
+}

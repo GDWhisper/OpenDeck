@@ -7,6 +7,7 @@
 	import Key from "./Key.svelte";
 
 	import { copiedItem, inspectedInstance, inspectedParentAction } from "$lib/propertyInspector";
+	import { t } from "$lib/i18n";
 
 	import { invoke } from "@tauri-apps/api/core";
 	import { onMount, tick } from "svelte";
@@ -112,8 +113,8 @@
 />
 
 <div class="px-6 pt-6 pb-4 text-neutral-300">
-	<button class="float-right text-xl" on:click={() => $inspectedParentAction = null} aria-label="Close">✕</button>
-	<h1 class="font-semibold text-2xl">{parentUuid == "opendeck.toggleaction" ? "Toggle Action" : "Multi Action"}</h1>
+	<button class="float-right text-xl" on:click={() => $inspectedParentAction = null} aria-label={$t("common.close")}>✕</button>
+	<h1 class="font-semibold text-2xl">{parentUuid == "opendeck.toggleaction" ? $t("parentAction.toggleAction") : $t("parentAction.multiAction")}</h1>
 </div>
 
 <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
@@ -122,7 +123,7 @@
 	class="flex flex-col h-128 overflow-auto"
 	on:click={() => $inspectedInstance = null}
 	role="list"
-	aria-label="{parentUuid == 'opendeck.toggleaction' ? 'Toggle Action' : 'Multi Action'} children"
+	aria-label="{parentUuid == 'opendeck.toggleaction' ? $t('parentAction.toggleAction') : $t('parentAction.multiAction')} children"
 	on:keydown={handleListKeydown}
 >
 	{#each children as instance, index}
@@ -144,14 +145,14 @@
 				scale={3 / 4}
 				role="presentation"
 				tabindex={-1}
-				label={(parentUuid == "opendeck.toggleaction" ? "Toggle Action" : "Multi Action") + " action " + (index + 1)}
+				label={(parentUuid == "opendeck.toggleaction" ? $t("parentAction.toggleAction") : $t("parentAction.multiAction")) + " action " + (index + 1)}
 			/>
 			<p class="ml-4 text-xl text-neutral-300">{instance.action.name}</p>
 			<button
 				class="ml-auto mr-10"
 				on:click|stopPropagation={() => removeInstance(index)}
 				tabindex={-1}
-				aria-label="Remove {instance.action.name}"
+				aria-label={$t("parentAction.removeAction", { name: instance.action.name })}
 			>
 				<Trash size="32" class="text-neutral-400" />
 			</button>
@@ -169,9 +170,9 @@
 		}}
 		role="listitem"
 		tabindex={children.length == 0 ? 0 : -1}
-		aria-label="Drag a new action here or copy one with Control+C and paste with Control+V."
+		aria-label={$t("parentAction.dragHint")}
 	>
 		<img src="/cube.png" class="m-2 w-24 rounded-xl" alt="" />
-		<p class="ml-4 text-xl text-neutral-400">Drop or paste actions here</p>
+		<p class="ml-4 text-xl text-neutral-400">{$t("parentAction.dropHere")}</p>
 	</div>
 </div>
