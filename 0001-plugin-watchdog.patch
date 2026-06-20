@@ -1,0 +1,73 @@
+﻿diff --git a/src-tauri/src/plugins/mod.rs b/src-tauri/src/plugins/mod.rs
+index 9362c68..a59015c 100644
+--- a/src-tauri/src/plugins/mod.rs
++++ b/src-tauri/src/plugins/mod.rs
+@@ -1,4 +1,4 @@
+-pub mod info_param;
++﻿pub mod info_param;
+ pub mod manifest;
+ mod webserver;
+ 
+@@ -463,6 +463,62 @@ pub fn initialise_plugins() {
+ 		}
+ 	});
+ 
++	// Watchdog: restart plugin child processes that exit unexpectedly (e.g. after sleep/resume).
++	tokio::spawn(async {
++		use std::time::Duration;
++		loop {
++			tokio::time::sleep(Duration::from_secs(30)).await;
++
++			let has_children = {
++				let instances = INSTANCES.lock().await;
++				instances.values().any(|i| !matches!(i, PluginInstance::Webview))
++			};
++			if !has_children {
++				continue;
++			}
++
++			let mut to_restart: Vec<(String, path::PathBuf)> = Vec::new();
++			{
++				let mut instances = INSTANCES.lock().await;
++				let mut still_alive = Vec::new();
++				for (uuid, mut instance) in instances.drain() {
++					match &mut instance {
++						PluginInstance::Webview => {
++							still_alive.push((uuid, instance));
++						}
++						PluginInstance::Wine(child)
++							| PluginInstance::Native(child)
++							| PluginInstance::Node(child) => match child.try_wait() {
++							Ok(Some(status)) => {
++								warn!("Plugin {uuid} exited unexpectedly ({status}), scheduling restart");
++								to_restart.push((uuid, config_dir().join("plugins").join(&uuid)));
++							}
++							Ok(None) => {
++								still_alive.push((uuid, instance));
++							}
++							Err(error) => {
++								error!("Failed to poll plugin {uuid}: {error}");
++								still_alive.push((uuid, instance));
++							}
++						},
++					}
++				}
++				*instances = still_alive.into_iter().collect();
++			}
++
++			for (uuid, path) in to_restart {
++				let app = APP_HANDLE.get().unwrap();
++				if let Err(error) = deactivate_plugin(app, &uuid).await {
++					warn!("Failed to deactivate plugin {uuid} before restart: {error:#}");
++				}
++				let spawner_tx = (*app.state::<mpsc::Sender<SpawnRequest>>()).clone();
++				if let Err(error) = initialise_plugin(path, spawner_tx).await {
++					error!("Failed to restart plugin {uuid}: {error:#}");
++				}
++			}
++		}
++	});
++
+ 	// Iterate through all directory entries in the plugins folder and initialise them as plugins if appropriate
+ 	for entry in entries {
+ 		if let Ok(entry) = entry {
