@@ -18,8 +18,9 @@
 >   sleep, killing all plugin timers).
 > - **`systemDidWakeUp` event broadcast** (`events/outbound/misc.rs`) — a new outbound event sent to
 >   all connected plugins after wake, allowing native plugins to reinitialize device connections.
-> - **i18n Chinese UI** — full Chinese localization of the frontend UI (Svelte components) and
->   starterpack plugin property inspector pages, switchable in Settings → Language.
+> - **i18n multi-language UI** — built-in internationalization framework for the frontend (Svelte components) and
+>   starterpack plugin property inspector pages. Chinese is the first supported language; more can be added by simply
+>   creating new locale files. Switchable in Settings → Language.
 >
 > Everything else (architecture, UI, plugin SDK compatibility) is identical to upstream.
 
@@ -36,8 +37,6 @@ Only Elgato hardware is officially supported, but plugins are available for supp
 
 > [!TIP]
 > No Stream Deck in front of you? Use OpenDeck with [Tacto](https://tacto.live/) to turn any smartphone into one!
-
-If you would like to support development of OpenDeck, consider sponsoring me on [GitHub Sponsors](https://github.com/sponsors/nekename), [Ko-fi](https://ko-fi.com/nekename) or [Liberapay](https://liberapay.com/nekename)! Considering that the power of your Stream Deck comes from the software you use with it, just $5 (only 2.5% of the cost of a Stream Deck+) goes a long way.
 
 Special thanks go to the developers of [Tauri](https://github.com/tauri-apps/tauri), the [elgato-streamdeck](https://github.com/OpenActionAPI/rust-elgato-streamdeck) Rust library, and [Phosphor Icons](https://phosphoricons.com/).
 

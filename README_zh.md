@@ -16,8 +16,8 @@
 >   （Elgato SDK 的 `timers.js` Web Worker 在休眠期间会死亡，导致所有插件定时器停摆）。
 > - **`systemDidWakeUp` 事件广播** (`events/outbound/misc.rs`) — 唤醒后向所有已连接插件发送新事件，
 >   允许原生插件重新初始化设备连接。
-> - **i18n 中文界面** — 前端 UI（Svelte 组件）和 starterpack 插件属性面板全部支持中文，
->   可在「设置 → 语言」中切换。
+> - **i18n 多语言界面** — 内置国际化框架，前端 UI（Svelte 组件）和 starterpack 插件属性面板均支持多语言，
+>   目前已适配中文，后续可轻松扩展至任意语言。可在「设置 → 语言」中切换。
 >
 > 其余部分（架构、UI、插件 SDK 兼容性）与上游完全一致。
 
@@ -34,8 +34,6 @@ OpenDeck 是一款桌面应用，用于在 Linux、Windows 和 macOS 上使用 E
 
 > [!TIP]
 > 手边没有 Stream Deck？使用 OpenDeck 搭配 [Tacto](https://tacto.live/) 可以把任意智能手机变成 Stream Deck！
-
-如果你想支持 OpenDeck 的开发，可以在 [GitHub Sponsors](https://github.com/sponsors/nekename)、[Ko-fi](https://ko-fi.com/nekename) 或 [Liberapay](https://liberapay.com/nekename) 上赞助我！Stream Deck 的强大离不开软件的支持，只需 $5（仅占 Stream Deck+ 价格的 2.5%）就能帮上大忙。
 
 特别感谢 [Tauri](https://github.com/tauri-apps/tauri)、[elgato-streamdeck](https://github.com/OpenActionAPI/rust-elgato-streamdeck) Rust 库以及 [Phosphor Icons](https://phosphoricons.com/) 的开发者们。
 
