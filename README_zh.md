@@ -16,6 +16,8 @@
 >   （Elgato SDK 的 `timers.js` Web Worker 在休眠期间会死亡，导致所有插件定时器停摆）。
 > - **`systemDidWakeUp` 事件广播** (`events/outbound/misc.rs`) — 唤醒后向所有已连接插件发送新事件，
 >   允许原生插件重新初始化设备连接。
+> - **i18n 中文界面** — 前端 UI（Svelte 组件）和 starterpack 插件属性面板全部支持中文，
+>   可在「设置 → 语言」中切换。
 >
 > 其余部分（架构、UI、插件 SDK 兼容性）与上游完全一致。
 

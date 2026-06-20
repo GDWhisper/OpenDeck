@@ -150,15 +150,11 @@ async fn main() {
 								r#"Thanks for installing {PRODUCT_NAME}!
 If you have any issues, please reach out on any of the support channels listed on GitHub (and make sure to star the project while you're there!).
 
-Some minimal statistics (such as operating system and plugins installed) will be collected from the next time the app starts.
-If you do not wish to support development in this way, please disable statistics in the settings.
-
 Enjoy!"#,
 							))
 							.title(format!("{PRODUCT_NAME} has successfully been installed"))
 							.kind(MessageDialogKind::Info)
 							.show(|_| ());
-						settings.value.statistics = false;
 					} else {
 						app.dialog()
 							.message(format!(
@@ -180,7 +176,7 @@ If you have already donated, thank you so much for your support!"#,
 
 			use tauri_plugin_aptabase::{Builder, EventTracker, InitOptions};
 			app.handle().plugin(
-				Builder::new(if settings.value.statistics { "A-SH-3841489320" } else { "" })
+				Builder::new("")
 					.with_options(InitOptions {
 						host: Some("https://aptabase.amankhanna.me".to_owned()),
 						flush_interval: None,
@@ -247,7 +243,7 @@ If you have already donated, thank you so much for your support!"#,
 
 			async fn update() -> Result<(), anyhow::Error> {
 				let res = reqwest::Client::new()
-					.get("https://api.github.com/repos/nekename/OpenDeck/releases/latest")
+					.get("https://api.github.com/repos/GDWhisper/OpenDeck-Win/releases/latest")
 					.header("Accept", "application/vnd.github+json")
 					.header("User-Agent", "OpenDeck")
 					.send()

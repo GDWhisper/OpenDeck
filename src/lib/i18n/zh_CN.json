@@ -16,7 +16,7 @@
 	"settings": {
 		"title": "设置",
 		"language": "语言：",
-		"languageTooltip": "{name} 界面已支持中文。此设置也会翻译支持多语言的已安装插件文本。",
+		"languageTooltip": "此设置也会翻译支持多语言的已安装插件文本。",
 		"brightness": "设备亮度：",
 		"sleepTimeout": "空闲休眠：",
 		"sleepTimeoutUnit": "分钟",

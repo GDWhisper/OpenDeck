@@ -18,6 +18,8 @@
 >   sleep, killing all plugin timers).
 > - **`systemDidWakeUp` event broadcast** (`events/outbound/misc.rs`) — a new outbound event sent to
 >   all connected plugins after wake, allowing native plugins to reinitialize device connections.
+> - **i18n Chinese UI** — full Chinese localization of the frontend UI (Svelte components) and
+>   starterpack plugin property inspector pages, switchable in Settings → Language.
 >
 > Everything else (architecture, UI, plugin SDK compatibility) is identical to upstream.
 

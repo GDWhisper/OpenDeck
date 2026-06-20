@@ -2,7 +2,6 @@
 	import ClockClockwise from "phosphor-svelte/lib/ClockClockwise";
 	import ClockCounterClockwise from "phosphor-svelte/lib/ClockCounterClockwise";
 	import Gear from "phosphor-svelte/lib/Gear";
-	import Heart from "phosphor-svelte/lib/Heart";
 	import Scroll from "phosphor-svelte/lib/Scroll";
 	import Star from "phosphor-svelte/lib/Star";
 	import Popup from "./Popup.svelte";
@@ -81,7 +80,7 @@
 				</select>
 			</div>
 			<Tooltip>
-				{$t("settings.languageTooltip", { name: PRODUCT_NAME })}
+				{$t("settings.languageTooltip")}
 			</Tooltip>
 		</div>
 
@@ -123,11 +122,6 @@
 		<div class="flex flex-row items-center m-2 space-x-2">
 			<label for="settings-updatecheck" class="text-neutral-400">{$t("settings.checkForUpdates")}</label>
 			<input type="checkbox" bind:checked={$settings.updatecheck} id="settings-updatecheck" />
-		</div>
-
-		<div class="flex flex-row items-center m-2 space-x-2">
-			<label for="settings-statistics" class="text-neutral-400">{$t("settings.contributeStatistics")}</label>
-			<input type="checkbox" bind:checked={$settings.statistics} id="settings-statistics" />
 		</div>
 
 		{#if !buildInfo?.split("</summary>")[0]?.includes("windows")}
@@ -194,14 +188,9 @@
 		<div class="absolute bottom-6 flex flex-row items-center text-sm text-neutral-400">
 			<span class="mr-1">
 				{$t("settings.pleaseLeave")}
-				<button on:click={() => invoke("open_url", { url: "https://github.com/nekename/OpenDeck" })} class="underline">{$t("settings.starOnGitHub")}</button>
+				<button on:click={() => invoke("open_url", { url: "https://github.com/GDWhisper/OpenDeck-Win" })} class="underline">{$t("settings.starOnGitHub")}</button>
 			</span>
 			<Star weight="fill" fill="yellow" />
-			<span class="mx-1">
-				{$t("settings.or")}
-				<button on:click={() => invoke("open_url", { url: "https://github.com/sponsors/nekename" })} class="underline">{$t("settings.sponsorMe")}</button>
-			</span>
-			<Heart weight="fill" fill="fuchsia" />
 			<span class="ml-1">{$t("settings.forMyWork")}</span>
 		</div>
 	</div>
