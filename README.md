@@ -1,3 +1,26 @@
+**English | [中文文档](README_zh.md)**
+
+> [!CAUTION]
+> **This is a Windows-focused fork** of [nekename/OpenDeck](https://github.com/nekename/OpenDeck).
+> The upstream maintainer prefers universal, cross-platform solutions; the changes here are pragmatic
+> Windows-specific workarounds that were [not accepted upstream](https://github.com/nekename/OpenDeck/pull/357).
+> They work on my machine but may not be suitable for general use.
+>
+> **What's different from upstream:**
+>
+> - **System sleep/wake detection** (`system_sleep_watchdog.rs`) — polls wall-clock time at 1 Hz;
+>   if the gap between consecutive polls exceeds 3 seconds, assumes the system slept. After a 2-second
+>   USB stabilization delay, all devices are re-enumerated and idle-slept devices are woken.
+> - **WebView plugin recovery after wake** (`reload_webview_plugins()` in `plugins/mod.rs`) — uses
+>   Tauri's native `window.reload()` (via WebView2 ICoreWebView2 controller, bypassing the potentially
+>   degraded JS engine after sleep), then re-evaluates the connection init JS through a hidden iframe
+>   that restores native `setInterval`/`setTimeout` (Elgato SDK's `timers.js` Web Worker dies during
+>   sleep, killing all plugin timers).
+> - **`systemDidWakeUp` event broadcast** (`events/outbound/misc.rs`) — a new outbound event sent to
+>   all connected plugins after wake, allowing native plugins to reinitialize device connections.
+>
+> Everything else (architecture, UI, plugin SDK compatibility) is identical to upstream.
+
 # OpenDeck
 
 Linux software for your Elgato Stream Deck
