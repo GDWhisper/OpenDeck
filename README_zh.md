@@ -47,39 +47,14 @@ OpenDeck 是一款桌面应用，用于在 Linux、Windows 和 macOS 上使用 E
 
 ## 安装
 
-### Linux
-
-> [!TIP]
-> 如果你使用的是 Debian、Ubuntu、Fedora、Fedora Atomic、openSUSE 或 Arch 系发行版，可以尝试自动安装脚本：
-> ```bash
-> curl -sSL https://raw.githubusercontent.com/nekename/OpenDeck/main/install_opendeck.sh | bash
-> ```
-> 该脚本会从 .deb 或 .rpm 发布文件、AUR 或 Flathub 安装 OpenDeck，并安装和重载相应的 udev 子系统规则。安装过程中还可以选择安装 Wine 和/或 Node.js。
-
-- 从 [GitHub Releases](https://github.com/nekename/OpenDeck/releases/latest) 下载最新版本。
-	- 建议避免使用 AppImage 版本，AppImage 通常存在一些问题（一般也建议避免使用 AppImage）。
-	- Arch 系发行版用户可以使用 `opendeck` 和 `opendeck-bin` AUR 包获取最新发布版，以及 `opendeck-git` AUR 包获取 `main` 分支的最新提交。
-- 使用你选择的包管理器安装 OpenDeck。
-- 从[这里](https://raw.githubusercontent.com/OpenActionAPI/rust-elgato-streamdeck/main/40-streamdeck.rules)安装 udev 子系统规则：
-	- 如果使用 `.deb` 或 `.rpm` 发布包，此文件应已自动安装。
-	- 否则，下载并复制到正确位置：`sudo cp 40-streamdeck.rules /etc/udev/rules.d/`。
-	- 两种情况下都需要重载 udev 规则：`sudo udevadm control --reload-rules && sudo udevadm trigger`。
-- 如果需要运行未针对 Linux 编译的插件，需要安装 [Wine](https://www.winehq.org/)。部分插件可能还依赖 Wine Mono（某些发行版的 Wine 包已包含，但不一定都有）。
-
-> [!NOTE]
-> 如果 Flatpak 是你唯一的选择，OpenDeck 也[可以在 Flathub 获取](https://flathub.org/apps/me.amankhanna.opendeck)。请注意你仍然需要按上述方式安装 udev 子系统规则。要使用 Windows 和 Node.js 插件，需要在系统中原生安装 Wine 或 Node.js（不支持 Wine 和 Node.js 的 Flatpak 版本）。
-
 ### Windows
 
-- 从 [GitHub Releases](https://github.com/nekename/OpenDeck/releases/latest) 下载最新版本（`.exe` 或 `.msi`）。
+- 从 [GitHub Releases](https://github.com/GDWhisper/OpenDeck-Win/releases/latest) 下载最新版本（`.exe` 或 `.msi`）。
 - 双击下载的文件运行安装程序。
 
-### macOS
+### Linux & macOS
 
-- 从 [GitHub Releases](https://github.com/nekename/OpenDeck/releases/latest) 下载最新版本。
-- 如果下载的是 `.dmg`，打开磁盘镜像并将应用拖入"应用程序"文件夹；如果下载的是 `.tar.gz`，解压到"应用程序"文件夹。
-- 打开已安装的应用。注意：如果收到"来自身份不明的开发者"的警告，*在 Finder 中右键点击应用然后选择"打开"*即可跳过警告。
-- 如果需要运行仅编译了 Windows 版本的插件，需要在系统上安装 [Wine](https://www.winehq.org/)。
+本分支专注于 Windows 平台的优化（系统休眠/唤醒恢复、WebView 插件容错等），未对 Linux 和 macOS 做针对性改进。请使用[上游 nekename/OpenDeck](https://github.com/nekename/OpenDeck) 的发布版本，上游提供完整的跨平台支持，包括 AUR 包、Flatpak、udev 规则及 `.dmg` 安装包。
 
 ## 支持
 
@@ -96,23 +71,17 @@ OpenDeck 是一款桌面应用，用于在 Linux、Windows 和 macOS 上使用 E
 ### 故障排除
 
 - 确保你运行的是最新版本的 OpenDeck，以及相关软件（如 Spotify 或 OBS）的较新版本。
-- 查看 [FAQ](https://github.com/nekename/OpenDeck/wiki/0.-FAQ) 和 [GitHub Issues](https://github.com/nekename/OpenDeck/issues) 看看是否已有解决方案。
+- 查看 [FAQ](https://github.com/GDWhisper/OpenDeck-Win/wiki/0.-FAQ) 和 [GitHub Issues](https://github.com/GDWhisper/OpenDeck-Win/issues) 看看是否已有解决方案。
 - 检查 OpenDeck 日志文件中的重要信息。提交支持请求时应附上此文件。
 	- 你也可以从终端运行 OpenDeck 直接查看日志，这比找日志文件更方便，尤其是日志文件为空或缺少细节时。
 	- 对于插件问题，还可以检查插件日志（位于同一文件夹，有时在插件自己的文件夹中也有 `plugin.log` 或类似文件）。
-	- 日志目录可从 OpenDeck 设置页面打开，或手动定位到以下路径：
-		- Linux：`~/.local/share/opendeck/logs/`
-		- Flatpak：`~/.var/app/me.amankhanna.opendeck/data/opendeck/logs/`
-		- Windows：`%appdata%\opendeck\logs\`
-		- macOS：`~/Library/Logs/opendeck/`
-- 在 Linux 或 macOS 上运行仅支持 Windows 的编译插件时，请确保系统安装了最新版本的 Wine（以及 Wine Mono）。
-- 如果设备未显示，请确保你有正确的访问权限（例如在 Linux 上安装 udev 子系统规则并重启系统），且连接设备后已重启 OpenDeck。
+	- 日志目录可从 OpenDeck 设置页面打开，或手动定位到：`%appdata%\opendeck\logs\`
 
 ### 支持论坛
 
 - [Discord](https://discord.gg/26Nf8rHvaj)
 - [Matrix](https://matrix.to/#/#opendeck:matrix.org)
-- [GitHub Issues](https://github.com/nekename/OpenDeck/issues)
+- [GitHub Issues](https://github.com/GDWhisper/OpenDeck-Win/issues)
 
 ### 从源码构建 / 贡献
 
