@@ -3,7 +3,7 @@
 > [!CAUTION]
 > **This is a Windows-focused fork** of [nekename/OpenDeck](https://github.com/nekename/OpenDeck).
 > The upstream maintainer prefers universal, cross-platform solutions; the changes here are pragmatic
-> Windows-specific workarounds that were [not accepted upstream](https://github.com/nekename/OpenDeck/pull/357).
+> Windows-specific workarounds that were not accepted upstream.
 > They work on my machine but may not be suitable for general use.
 >
 > **What's different from upstream:**

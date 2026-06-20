@@ -3,7 +3,7 @@
 > [!CAUTION]
 > **这是 [nekename/OpenDeck](https://github.com/nekename/OpenDeck) 的 Windows 优化分支。**
 > 上游作者倾向于通用型跨平台方案；本分支中的改动是针对 Windows 的务实补丁，
-> [未被上游接受](https://github.com/nekename/OpenDeck/pull/357)。
+> 未被上游接受。
 > 这些改动在我的机器上运行良好，但不一定适合通用场景。
 >
 > **与上游的差异：**
