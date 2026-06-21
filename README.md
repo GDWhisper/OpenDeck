@@ -6,6 +6,8 @@
 > Windows-specific workarounds that were not accepted upstream.
 > They work on my machine but may not be suitable for general use.
 >
+> Based on upstream v2.12.1. Upstream changes will be synced when possible, but this cannot be guaranteed.
+>
 > **What's different from upstream:**
 >
 > - **System sleep/wake detection** (`system_sleep_watchdog.rs`) — polls wall-clock time at 1 Hz;
