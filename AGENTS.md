@@ -295,3 +295,9 @@ beforeBuildCommand: "npm run build"
 ```
 
 Don't forget to revert this change before committing (see `#pre-commit-requirements` above).
+
+## Bug Fix Log
+
+See [`docs/bug-fixes.md`](docs/bug-fixes.md) for a running log of bugs found and fixed during development, including root causes, fixes, and lessons learned. **Before fixing any bug, check that file first** — the same issue (or a similar pattern) may have been encountered before.
+
+When a bug fix is confirmed working, add a new entry to `docs/bug-fixes.md` with: symptom, root cause, fix, and lesson learned.
