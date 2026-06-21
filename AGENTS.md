@@ -139,6 +139,12 @@ An `ActionContext` extends this with an action instance index for nested actions
 - **Device access**: Linux requires udev rules (`40-streamdeck.rules`), installed automatically with .deb/.rpm
 - **Flatpak**: Special handling for paths (`is_flatpak()` checks), Wine must be installed natively
 
+### Documentation Update Policy
+
+- **README.md / README_zh.md**: Updated only at **release time** — accumulate changes and update as a batch when a new release is cut. Do not edit READMEs for individual bug fixes.
+- **CHANGELOG.md**: Updated **per fix** — each bug fix or feature gets an entry with the date it was confirmed working. Follows [Keep a Changelog](https://keepachangelog.com/) format. Entries go under `## Unreleased` until a release is cut.
+- **AGENTS.md**: Updated as conventions evolve — this is a living document for development workflow, not release notes.
+
 ## Common Patterns
 
 ### Adding a New Tauri Command
