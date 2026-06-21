@@ -53,6 +53,40 @@ fn hide_window(app: &AppHandle) -> Result<(), tauri::Error> {
 	Ok(())
 }
 
+/// Restart the application with a short delay to avoid single-instance
+/// mutex races.  Tauri's built-in `app.restart()` spawns the new process
+/// *before* the old one exits, so the new process may fail to acquire the
+/// single-instance lock.  This helper launches a detached `cmd.exe` that
+/// waits a few seconds (enough time for the old process to release the mutex),
+/// then starts the new instance, and finally exits the current process.
+#[cfg(windows)]
+fn delayed_restart(app: &AppHandle) {
+	use std::os::windows::process::CommandExt;
+	if let Ok(exe) = std::env::current_exe() {
+		let exe_str = exe.to_string_lossy().to_string();
+		log::info!("delayed_restart: spawning launcher for {}", exe_str);
+		// ping is used for the delay because timeout.exe requires a console
+		// and fails under CREATE_NO_WINDOW.  start launches the new process
+		// detached from the cmd.exe helper.
+		let result = std::process::Command::new("cmd.exe")
+			.args(["/C", "ping", "-n", "4", "127.0.0.1", ">", "nul", "&&", "start", "/B", "", &exe_str])
+			.creation_flags(0x08000000) // CREATE_NO_WINDOW
+			.spawn();
+		match result {
+			Ok(_) => log::info!("delayed_restart: launcher spawned"),
+			Err(e) => log::error!("delayed_restart: failed to spawn launcher: {}", e),
+		}
+	} else {
+		log::error!("delayed_restart: could not determine exe path");
+	}
+	app.exit(0);
+}
+
+#[cfg(not(windows))]
+fn delayed_restart(app: &AppHandle) {
+	app.restart();
+}
+
 #[tokio::main]
 async fn main() {
 	log_panics::init();
@@ -225,7 +259,10 @@ If you have already donated, thank you so much for your support!"#,
 					let _ = match event.id().as_ref() {
 						"show" => show_window(app),
 						"hide" => hide_window(app),
-						"restart" => app.restart(),
+						"restart" => {
+							delayed_restart(app);
+							Ok(())
+						}
 						"quit" => {
 							app.exit(0);
 							Ok(())
@@ -375,7 +412,7 @@ If you have already donated, thank you so much for your support!"#,
 		if let tauri::RunEvent::Exit = event {
 			#[cfg(windows)]
 			futures::executor::block_on(plugins::deactivate_plugins());
-			tokio::spawn(elgato::reset_devices());
+			futures::executor::block_on(elgato::reset_devices());
 			use tauri_plugin_aptabase::EventTracker;
 			app.flush_events_blocking();
 		}
