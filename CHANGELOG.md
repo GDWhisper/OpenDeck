@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+## [2.12.2] - 2026-06-22
+
 ### Bug Fixes
 
 - **2026-06-22**: Fix Stream Deck device lost after system sleep — invalidate cached `HidApi` instance on wake so `initialise_devices()` gets fresh USB handles; add `AtomicBool` guard to prevent concurrent re-init on double-wake; add error logging to device reader loop

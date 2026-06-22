@@ -24,6 +24,10 @@
 >   starterpack plugin property inspector pages. Chinese is the first supported language; more can be added by simply
 >   creating new locale files. Switchable in Settings → Language.
 >
+> **v2.12.2 fixes:** Stream Deck devices not detected after system sleep (HIDAPI stale handles),
+> tray Restart not relaunching the app, and plugin processes not recovering after sleep/resume.
+> Full details in the [CHANGELOG](CHANGELOG.md).
+>
 > Everything else (architecture, UI, plugin SDK compatibility) is identical to upstream.
 
 # OpenDeck
