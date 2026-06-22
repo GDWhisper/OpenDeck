@@ -110,6 +110,29 @@ futures::executor::block_on(elgato::reset_devices());
 
 ---
 
+## BF-007: Stream Deck device lost after sleep — HIDAPI cache + double-wake race + silent reader loop
+
+**Date:** 2026-06  
+**Files:** `src-tauri/src/elgato.rs`, `src-tauri/src/system_sleep_watchdog.rs`  
+**Symptom:** After system sleep/wake, the Stream Deck device disappears. Profile save fails with `device not found`. After manual restart, the `akp153` plugin (device hardware) doesn't register. Log showed `System sleep/wake detected` followed by webview plugin reconnection, but no `Registered plugin` for the device itself.
+
+**Root cause:** Three interacting bugs:
+
+1. **HIDAPI stale cache:** `elgato.rs` caches `HidApi` in a static `HIDAPI: RwLock<Option<Arc<HidApi>>>`. After sleep, the USB subsystem re-enumerates devices with new handles, but the cached instance holds stale handles. `list_devices_async(&hid)` with stale handles either returns empty or fails to connect.
+
+2. **Double-wake race:** The watchdog's `last_check` is reset only after re-init completes. If a second wake fires during the 2s stabilization delay + re-init time, it triggers another concurrent `initialise_devices()`, potentially interfering with the first.
+
+3. **Silent reader loop exit:** `init()` had `Err(_) => break` in the reader loop with no logging. When the device handle died after sleep, the reader exited silently, removing the device from `ELGATO_DEVICES` and deregistering it — with zero diagnostic output.
+
+**Fix:**
+1. Added `invalidate_hidapi()` — clears the cached `HidApi` so `initialise_devices()` creates a fresh instance with current USB handles. Called from watchdog before `initialise_devices()`.
+2. Added `AtomicBool` guard (`REINIT_IN_PROGRESS`) with `compare_exchange` to prevent concurrent re-init.
+3. Added `log::warn!` on reader loop error and `log::info!` on device deregistration.
+
+**Lesson:** `hidapi`'s `HidApi` instance holds OS-level USB handles that become invalid after sleep. Any code that caches `HidApi` across sleep boundaries must invalidate and recreate it on wake. Silent error swallowing in device I/O loops makes post-sleep failures invisible — always log errors at device boundaries.
+
+---
+
 ## General Patterns
 
 **Sleep/wake resilience:** System sleep degrades more than just network connections. The JS engine, Web Workers, WebSocket connections, and even some OS-level console APIs can become unreliable. Recovery code should use the most native/host-level APIs available.
@@ -119,3 +142,5 @@ futures::executor::block_on(elgato::reset_devices());
 **Single-instance + restart:** On Windows, named mutexes are released when the process fully terminates, not when `exit()` is called. Any restart mechanism must ensure the old process is completely gone before the new one starts.
 
 **CREATE_NO_WINDOW pitfalls:** Many Windows utilities assume a console exists. When hiding windows, test every command in the chain individually under the same flags.
+
+**USB handle caching:** Libraries like `hidapi` cache OS-level device handles. After system sleep, USB re-enumeration gives devices new handles, but cached instances remain stale. Any static/cached handle must be invalidated on wake before re-enumeration. Silent error swallowing in I/O loops (e.g. `Err(_) => break`) hides post-sleep failures — always log errors at device boundaries.

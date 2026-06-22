@@ -151,7 +151,10 @@ async fn init(device: AsyncStreamDeck, device_id: String) {
 	loop {
 		let updates = match reader.read(100.0).await {
 			Ok(updates) => updates,
-			Err(_) => break,
+			Err(e) => {
+				log::warn!("Device {} reader loop exited: {}", device_id, e);
+				break;
+			}
 		};
 		for update in updates {
 			match match update {
@@ -170,10 +173,21 @@ async fn init(device: AsyncStreamDeck, device_id: String) {
 		}
 	}
 
+	log::info!("Device {} disconnected, deregistering", device_id);
 	ELGATO_DEVICES.write().await.remove(&device_id);
 	crate::events::inbound::devices::deregister_device("", crate::events::inbound::PayloadEvent { payload: device_id })
 		.await
 		.unwrap();
+}
+
+/// Invalidate the cached `HidApi` instance.
+///
+/// Must be called after system sleep/wake — the USB subsystem re-enumerates
+/// devices on resume, so old handles are stale. The next call to
+/// [`initialise_devices()`] will create a fresh `HidApi` with current handles.
+pub async fn invalidate_hidapi() {
+	HIDAPI.write().await.take();
+	log::info!("HIDAPI cache invalidated");
 }
 
 /// Attempt to initialise all connected devices.

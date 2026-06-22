@@ -1,4 +1,9 @@
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, SystemTime};
+
+/// Guard to prevent concurrent re-init when multiple wake events fire in
+/// quick succession (e.g. a short sleep followed by an immediate second wake).
+static REINIT_IN_PROGRESS: AtomicBool = AtomicBool::new(false);
 
 /// Initialise the system sleep/wake watchdog.
 ///
@@ -28,10 +33,20 @@ pub fn init_watchdog() {
 			let elapsed = now.duration_since(last_check).unwrap_or(Duration::ZERO);
 
 			if elapsed > sleep_threshold {
-				log::info!(
-					"System sleep/wake detected (elapsed: {:?}), reinitialising devices",
-					elapsed,
-				);
+				log::info!("System sleep/wake detected (elapsed: {:?}), reinitialising devices", elapsed,);
+
+				// Prevent concurrent re-init if another wake fires while we
+				// are still handling this one (double-wake race).
+				if REINIT_IN_PROGRESS.compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst).is_err() {
+					log::info!("Re-init already in progress, skipping duplicate wake handling");
+					last_check = SystemTime::now();
+					continue;
+				}
+
+				// Invalidate the cached HidApi instance — USB handles are
+				// stale after sleep.  The next call to initialise_devices()
+				// will create a fresh HidApi with current device handles.
+				crate::elgato::invalidate_hidapi().await;
 
 				// Wait for USB to stabilise after resume so that devices are
 				// properly re-enumerated before we try to connect to them.
@@ -60,6 +75,9 @@ pub fn init_watchdog() {
 					tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 					crate::plugins::reload_webview_plugins().await;
 				});
+
+				// Release the re-init guard.
+				REINIT_IN_PROGRESS.store(false, Ordering::SeqCst);
 
 				// Reset last_check after handling to prevent the next poll
 				// from re-triggering wake detection due to time spent in
