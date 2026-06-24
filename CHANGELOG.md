@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+## [2.12.3] - 2026-06-23
+
+### Changes
+
+- Replace wall-clock polling sleep detection with [psp](https://github.com/pewsheen/psp) crate for native OS power event callbacks (event-driven, no polling)
+- On `Resume`, send `systemDidWakeUp` event to all plugins
+- On `ScreenLocked`/`ScreenUnlocked`, sleep or wake devices based on `sleep_when_computer_locked` setting
+
 ## [2.12.2] - 2026-06-22
 
 ### Bug Fixes

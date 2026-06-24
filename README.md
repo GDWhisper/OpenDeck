@@ -10,9 +10,10 @@
 >
 > **What's different from upstream:**
 >
-> - **System sleep/wake detection** (`system_sleep_watchdog.rs`) — polls wall-clock time at 1 Hz;
->   if the gap between consecutive polls exceeds 3 seconds, assumes the system slept. After a 2-second
->   USB stabilization delay, all devices are re-enumerated and idle-slept devices are woken.
+> - **System sleep/wake detection** (`power_events.rs`) — uses the [psp](https://github.com/pewsheen/psp)
+>   crate for native OS power event callbacks (event-driven, no polling). On `Resume`, sends
+>   `systemDidWakeUp` to all plugins. On `ScreenLocked`/`ScreenUnlocked`, sleeps or wakes devices
+>   based on the `sleep_when_computer_locked` setting.
 > - **WebView plugin recovery after wake** (`reload_webview_plugins()` in `plugins/mod.rs`) — uses
 >   Tauri's native `window.reload()` (via WebView2 ICoreWebView2 controller, bypassing the potentially
 >   degraded JS engine after sleep), then re-evaluates the connection init JS through a hidden iframe
