@@ -7,9 +7,13 @@ use tauri::{AppHandle, Emitter, Manager, command};
 use tokio::fs::remove_dir_all;
 
 #[command]
-pub async fn create_instance(app: AppHandle, action: Action, context: Context) -> Result<Option<ActionInstance>, Error> {
+pub async fn create_instance(app: AppHandle, mut action: Action, context: Context) -> Result<Option<ActionInstance>, Error> {
 	if !action.controllers.contains(&context.controller) {
 		return Ok(None);
+	}
+
+	if context.controller == "Encoder" {
+		crate::shared::load_initial_encoder_layout(&mut action);
 	}
 
 	let mut locks = acquire_locks_mut().await;

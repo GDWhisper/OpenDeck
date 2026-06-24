@@ -1,6 +1,6 @@
 use super::Store;
 
-use crate::shared::{ActionInstance, DEVICES, DeviceInfo, Profile, config_dir, copy_dir};
+use crate::shared::{ActionInstance, DEVICES, DeviceInfo, Profile, config_dir, copy_dir, load_initial_encoder_layout};
 
 use std::collections::HashMap;
 use std::fs;
@@ -65,15 +65,17 @@ impl ProfileStores {
 				}
 			}
 
-			// We need to populate instances from a profile without encoders with them
-			for slot in store.value.sliders.iter_mut() {
-				if let Some(instance) = slot
-					&& instance.action.encoder.is_none()
+			// We need to populate instances from a profile without encoders or without parsed layouts with them
+			for instance in store.value.sliders.iter_mut().flatten() {
+				// Populate encoder data using the manifest action if missing
+				if instance.action.encoder.is_none()
 					&& let Some(action) = actions.iter().find(|a| a.uuid == *instance.action.uuid)
-					&& action.encoder.is_some()
 				{
 					instance.action.encoder = action.encoder.clone();
 				}
+
+				// Load encoder layout if not yet parsed
+				load_initial_encoder_layout(&mut instance.action);
 			}
 
 			store.save()?;
