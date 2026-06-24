@@ -8,7 +8,7 @@ mod events;
 mod plugins;
 mod shared;
 mod store;
-mod system_sleep_watchdog;
+mod power_events;
 mod zip_extract;
 
 mod built_info {
@@ -228,7 +228,7 @@ If you have already donated, thank you so much for your support!"#,
 			plugins::initialise_plugins();
 			application_watcher::init_application_watcher();
 			device_sleep::init_device_sleep();
-			system_sleep_watchdog::init_watchdog();
+			power_events::init_power_events();
 
 			let label = IconMenuItemBuilder::with_id("label", PRODUCT_NAME)
 				.icon(app.default_window_icon().unwrap().clone())

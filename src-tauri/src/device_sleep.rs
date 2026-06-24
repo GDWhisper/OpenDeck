@@ -1,5 +1,5 @@
 use std::sync::LazyLock;
-use std::sync::atomic::{AtomicU16, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU16, Ordering};
 use std::time::{Duration, Instant};
 
 use dashmap::DashMap;
@@ -7,9 +7,12 @@ use dashmap::DashMap;
 static SLEEP_TIMEOUT_MINUTES: AtomicU16 = AtomicU16::new(0);
 static LAST_ACTIVITY: LazyLock<DashMap<String, Instant>> = LazyLock::new(DashMap::new);
 static SLEEPING_DEVICES: LazyLock<DashMap<String, ()>> = LazyLock::new(DashMap::new);
+static SLEEP_WHEN_COMPUTER_LOCKED: AtomicBool = AtomicBool::new(false);
+static COMPUTER_LOCKED: AtomicBool = AtomicBool::new(false);
 
 pub fn init_device_sleep() {
 	SLEEP_TIMEOUT_MINUTES.store(crate::store::get_settings().value.sleep_timeout_minutes, Ordering::Relaxed);
+	SLEEP_WHEN_COMPUTER_LOCKED.store(crate::store::get_settings().value.sleep_when_computer_locked, Ordering::Relaxed);
 
 	tokio::spawn(async {
 		loop {
@@ -29,6 +32,9 @@ pub fn update_timeout_minutes(minutes: u16) {
 }
 
 pub async fn note_activity(device: &str) -> Result<bool, anyhow::Error> {
+	if SLEEP_WHEN_COMPUTER_LOCKED.load(Ordering::Relaxed) && COMPUTER_LOCKED.load(Ordering::Relaxed) {
+		return Ok(true);
+	}
 	LAST_ACTIVITY.insert(device.to_owned(), Instant::now());
 	wake_device(device).await
 }
@@ -74,4 +80,26 @@ async fn wake_device(device: &str) -> Result<bool, anyhow::Error> {
 	}
 
 	Ok(false)
+}
+
+pub async fn sleep_for_computer_lock() -> Result<(), anyhow::Error> {
+	COMPUTER_LOCKED.store(true, Ordering::Relaxed);
+	if !SLEEP_WHEN_COMPUTER_LOCKED.load(Ordering::Relaxed) {
+		return Ok(());
+	}
+	let device_ids = crate::shared::DEVICES.iter().map(|entry| entry.id.clone()).collect::<Vec<_>>();
+	for device in device_ids {
+		sleep_device(device).await?;
+	}
+	Ok(())
+}
+
+pub async fn wake_from_computer_lock() -> Result<(), anyhow::Error> {
+	COMPUTER_LOCKED.store(false, Ordering::Relaxed);
+	let device_ids = SLEEPING_DEVICES.iter().map(|entry| entry.key().clone()).collect::<Vec<_>>();
+	for device in device_ids {
+		LAST_ACTIVITY.insert(device.to_owned(), Instant::now());
+		wake_device(&device).await?;
+	}
+	Ok(())
 }
