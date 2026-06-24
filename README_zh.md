@@ -10,19 +10,13 @@
 >
 > **与上游的差异：**
 >
-> - **系统休眠/唤醒检测** (`system_sleep_watchdog.rs`) — 以 1 Hz 频率轮询系统挂钟时间，
->   若两次轮询间隔超过 3 秒则判定系统经历了休眠。等待 2 秒 USB 稳定后，重新枚举所有设备并唤醒处于空闲休眠的设备。
-> - **唤醒后 WebView 插件恢复** (`plugins/mod.rs` 中的 `reload_webview_plugins()`) — 使用
->   Tauri 原生 `window.reload()`（通过 WebView2 ICoreWebView2 控制器，绕过休眠后可能退化的 JS 引擎），
->   然后通过隐藏 iframe 恢复原生 `setInterval`/`setTimeout` 并重新执行连接初始化 JS
->   （Elgato SDK 的 `timers.js` Web Worker 在休眠期间会死亡，导致所有插件定时器停摆）。
-> - **`systemDidWakeUp` 事件广播** (`events/outbound/misc.rs`) — 唤醒后向所有已连接插件发送新事件，
->   允许原生插件重新初始化设备连接。
+> - **休眠/唤醒自动恢复** — 电脑从休眠唤醒后，Stream Deck 设备和插件自动重连，无需手动拔插。
+> - **锁屏设备休眠** — 可选设置，锁屏时自动让设备进入休眠，解锁后自动唤醒。
+> - **`systemDidWakeUp` 事件** — 系统唤醒时通知插件，方便插件自行恢复状态。
 > - **i18n 多语言界面** — 内置国际化框架，前端 UI（Svelte 组件）和 starterpack 插件属性面板均支持多语言，
 >   目前已适配中文，后续可轻松扩展至任意语言。可在「设置 → 语言」中切换。
 >
-> **v2.12.2 修复：** 系统休眠后 Stream Deck 设备无法检测（HIDAPI 缓存过期）、
-> 托盘"重启"无法重新启动应用、插件进程休眠后未恢复。详见 [CHANGELOG](CHANGELOG.md)。
+> **v2.12.2 修复：** 休眠后设备丢失、托盘重启无效、插件唤醒后不恢复。详见 [CHANGELOG](CHANGELOG.md)。
 >
 > 其余部分（架构、UI、插件 SDK 兼容性）与上游完全一致。
 

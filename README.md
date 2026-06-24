@@ -10,24 +10,14 @@
 >
 > **What's different from upstream:**
 >
-> - **System sleep/wake detection** (`power_events.rs`) — uses the [psp](https://github.com/pewsheen/psp)
->   crate for native OS power event callbacks (event-driven, no polling). On `Resume`, sends
->   `systemDidWakeUp` to all plugins. On `ScreenLocked`/`ScreenUnlocked`, sleeps or wakes devices
->   based on the `sleep_when_computer_locked` setting.
-> - **WebView plugin recovery after wake** (`reload_webview_plugins()` in `plugins/mod.rs`) — uses
->   Tauri's native `window.reload()` (via WebView2 ICoreWebView2 controller, bypassing the potentially
->   degraded JS engine after sleep), then re-evaluates the connection init JS through a hidden iframe
->   that restores native `setInterval`/`setTimeout` (Elgato SDK's `timers.js` Web Worker dies during
->   sleep, killing all plugin timers).
-> - **`systemDidWakeUp` event broadcast** (`events/outbound/misc.rs`) — a new outbound event sent to
->   all connected plugins after wake, allowing native plugins to reinitialize device connections.
+> - **Sleep/wake recovery** — Stream Deck devices and plugins automatically reconnect after your PC wakes from sleep. No manual replug needed.
+> - **Lock screen device sleep** — optional setting to put devices to sleep when you lock your PC, and wake them on unlock.
+> - **`systemDidWakeUp` event** — plugins are notified when the system wakes up, so they can recover their own state.
 > - **i18n multi-language UI** — built-in internationalization framework for the frontend (Svelte components) and
 >   starterpack plugin property inspector pages. Chinese is the first supported language; more can be added by simply
 >   creating new locale files. Switchable in Settings → Language.
 >
-> **v2.12.2 fixes:** Stream Deck devices not detected after system sleep (HIDAPI stale handles),
-> tray Restart not relaunching the app, and plugin processes not recovering after sleep/resume.
-> Full details in the [CHANGELOG](CHANGELOG.md).
+> **v2.12.2 fixes:** devices not detected after sleep, tray Restart not working, plugins not recovering after wake. See [CHANGELOG](CHANGELOG.md).
 >
 > Everything else (architecture, UI, plugin SDK compatibility) is identical to upstream.
 
