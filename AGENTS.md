@@ -302,6 +302,20 @@ beforeBuildCommand: "npm run build"
 
 Don't forget to revert this change before committing (see `#pre-commit-requirements` above).
 
+## Multi-Branch Workflow
+
+This project uses a three-branch worktree layout for development:
+
+| Branch | Directory | Purpose |
+|--------|-----------|---------|
+| `main` | `OpenDeck` | Clean releases only |
+| `dev` | `OpenDeck-dev` | Daily development |
+| `debug` | `OpenDeck-debug` | Urgent bug fixes |
+
+**Flow direction**: `debug → dev → main` (never reverse).
+
+See [`docs/workflow-guide.md`](docs/workflow-guide.md) for the full workflow reference.
+
 ## Bug Fix Log
 
 See [`docs/bug-fixes.md`](docs/bug-fixes.md) for a running log of bugs found and fixed during development, including root causes, fixes, and lessons learned. **Before fixing any bug, check that file first** — the same issue (or a similar pattern) may have been encountered before.
