@@ -53,6 +53,9 @@
 	}
 	$: update(instance);
 	$: invoke("set_state", { context: instance.context, index: state, state: instance.states[state] });
+
+	let canvas: HTMLCanvasElement;
+	$: renderImage(canvas, null, instance.states[state], instance.action.states[state]?.image ?? instance.action.icon, false, false, true, false, false, 0);
 </script>
 
 <svelte:window
@@ -91,15 +94,14 @@
 				title={$t("instance_editor.image.hint")}
 				aria-label={$t("instance_editor.image.hint")}
 			>
-				{#await renderImage(null, null, instance.states[state], instance.action.states[state]?.image ?? instance.action.icon, false, false, true, false, false, 0, true)}
-					<div class="w-32 min-w-32 h-32 bg-neutral-800 animate-pulse border border-neutral-600 rounded-xl"></div>
-				{:then resolvedSrc}
-					<img
-						src={resolvedSrc}
-						class="my-auto w-32 min-w-32 h-min aspect-square bg-black border border-neutral-600 rounded-xl cursor-pointer"
-						alt={$t("instance_editor.image.n", { n: state + 1 })}
-					/>
-				{/await}
+				<canvas
+					bind:this={canvas}
+					class="bg-black border border-neutral-600 rounded-xl cursor-pointer"
+					width={144}
+					height={144}
+					style={`transform: scale(${128 / 144}); margin: ${(128 - 144) / 2}px;`}
+					aria-label={$t("instance_editor.image.n", { n: state + 1 })}
+				/>
 			</button>
 			<div class="flex flex-row items-center justify-center mt-1 space-x-1 text-neutral-300">
 				<button

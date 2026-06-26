@@ -50,7 +50,6 @@ export async function renderImage(
 	active: boolean,
 	pressed: boolean,
 	rotation?: number,
-	preview?: boolean,
 ) {
 	// Create canvas
 	let scale = 1;
@@ -184,7 +183,6 @@ export async function renderImage(
 	context.restore();
 
 	if (active && slotContext) setTimeout(async () => await invoke("update_image", { context: slotContext, image: canvas.toDataURL("image/jpeg") }), 10);
-	else if (preview) return canvas.toDataURL();
 }
 
 export async function resizeImage(source: string): Promise<string | undefined> {
