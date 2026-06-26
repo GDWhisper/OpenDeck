@@ -93,10 +93,12 @@ pub async fn update_image(context: &crate::shared::Context, image: Option<&str>)
 			let bytes = base64::engine::general_purpose::STANDARD.decode(data)?;
 			if context.controller == "Encoder" {
 				let locks = acquire_locks().await;
-				if let Some(instance) = get_slot(context, &locks).await?
+				let slot = get_slot(context, &locks).await?.clone();
+				drop(locks);
+				if let Some(instance) = slot
 					&& let Some(encoder) = &instance.action.encoder
 				{
-					let img = get_encoder_image(encoder, instance)?;
+					let img = get_encoder_image(encoder, &instance)?;
 					device.write_lcd(context.position as u16 * 200, 0, &ImageRect::from_image_async(img.clone())?).await?;
 				} else {
 					// If we get here, this is either an Encoder action that doesn't have an Encoder config in the manifest, or we were
