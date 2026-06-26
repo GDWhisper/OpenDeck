@@ -31,6 +31,12 @@ fn extract_average_colour(img: &image::DynamicImage) -> (u8, u8, u8) {
 fn get_encoder_image(encoder: &Encoder, instance: &ActionInstance) -> Result<DynamicImage, anyhow::Error> {
 	// Clone the layout so we can mutate it for rendering without persisting
 	let mut layout = encoder.layout_parsed.clone();
+
+	if layout.is_null() {
+		// Something's gone horribly wrong here; we should have a layout. Render a blank image.
+		return Ok(DynamicImage::new_rgb8(200, 100));
+	}
+
 	let path = config_dir().join("plugins").join(&instance.action.plugin);
 
 	// We need to validate whether title text and icon images are defined; if not, pull them from the state/action
@@ -93,8 +99,9 @@ pub async fn update_image(context: &crate::shared::Context, image: Option<&str>)
 					let img = get_encoder_image(encoder, instance)?;
 					device.write_lcd(context.position as u16 * 200, 0, &ImageRect::from_image_async(img.clone())?).await?;
 				} else {
-					// If this encoder doesn't have a layout assigned to it, fall back and just render the icon.
-					// This shouldn't happen and is a safety fallback behaviour.
+					// If we get here, this is either an Encoder action that doesn't have an Encoder config in the manifest, or we were
+					// unable to locate the instance for this action. This realistically shouldn't happen, but if it does, we'll fall back
+					// to rendering what was provided to this function call.
 					device
 						.write_lcd(
 							(context.position as u16 * 200) + 64,

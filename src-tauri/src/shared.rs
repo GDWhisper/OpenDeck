@@ -244,7 +244,7 @@ pub struct Encoder {
 	#[serde_inline_default(String::new())]
 	pub background: String,
 
-	#[serde_inline_default(String::new())]
+	#[serde_inline_default(String::from("$X1"))]
 	pub layout: String,
 
 	// Note: this is not a real manifest property; it is only used internally.
@@ -256,7 +256,11 @@ pub struct Encoder {
 pub fn initialise_encoder_layout(action: &mut Action, layout: Option<String>) -> Result<(), anyhow::Error> {
 	let Some(encoder) = action.encoder.as_mut() else { return Ok(()) };
 
-	let load_layout = layout.unwrap_or_else(|| encoder.layout.clone());
+	let load_layout = match layout.unwrap_or_else(|| encoder.layout.clone()) {
+		s if s.is_empty() => "$X1".to_string(),
+		s => s,
+	};
+
 	let layout = if load_layout.starts_with('$') {
 		load_layout.clone()
 	} else {
@@ -266,9 +270,11 @@ pub fn initialise_encoder_layout(action: &mut Action, layout: Option<String>) ->
 		match layout_file.canonicalize() {
 			Ok(resolved) if resolved.starts_with(&plugin_dir) => resolved.to_string_lossy().into_owned(),
 			Ok(_) => {
+				encoder.layout_parsed = serde_json::Value::Null;
 				bail!("Encoder layout path escapes plugin directory: {}", load_layout);
 			}
 			Err(error) => {
+				encoder.layout_parsed = serde_json::Value::Null;
 				bail!("Failed to canonicalize encoder layout path {}: {}", load_layout, error);
 			}
 		}
@@ -276,7 +282,10 @@ pub fn initialise_encoder_layout(action: &mut Action, layout: Option<String>) ->
 
 	match load_encoder_layout(&layout) {
 		Ok(parsed) => encoder.layout_parsed = parsed,
-		Err(error) => bail!("Failed to load encoder layout {}: {}", load_layout, error),
+		Err(error) => {
+			encoder.layout_parsed = serde_json::Value::Null;
+			bail!("Failed to load encoder layout {}: {}", load_layout, error)
+		}
 	}
 	Ok(())
 }
