@@ -17,6 +17,10 @@ static PLUGIN_SOCKETS: Sockets = LazyLock::new(|| Mutex::new(HashMap::new()));
 static PROPERTY_INSPECTOR_SOCKETS: Sockets = LazyLock::new(|| Mutex::new(HashMap::new()));
 static PLUGIN_QUEUES: LazyLock<RwLock<HashMap<String, Vec<Message>>>> = LazyLock::new(|| RwLock::new(HashMap::new()));
 static PROPERTY_INSPECTOR_QUEUES: LazyLock<RwLock<HashMap<String, Vec<Message>>>> = LazyLock::new(|| RwLock::new(HashMap::new()));
+/// Generation counter per UUID — prevents stale cleanup tasks from removing
+/// a newly registered connection's entry from PLUGIN_SOCKETS.
+static PLUGIN_CONN_GEN: LazyLock<Mutex<HashMap<String, u64>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
+static PI_CONN_GEN: LazyLock<Mutex<HashMap<String, u64>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
 
 pub async fn registered_plugins() -> Vec<String> {
 	PLUGIN_SOCKETS.lock().await.keys().map(|x| x.to_owned()).collect()
@@ -35,10 +39,21 @@ pub async fn register_plugin(event: RegisterEvent, stream: WebSocketStream<TcpSt
 				let _ = read.flush().await;
 			}
 			PLUGIN_SOCKETS.lock().await.insert(uuid.clone(), read);
+			let generation = {
+				let mut g = PLUGIN_CONN_GEN.lock().await;
+				let e = g.entry(uuid.clone()).or_insert(0);
+				*e += 1;
+				*e
+			};
 			tokio::spawn(async move {
 				let uuid = uuid;
 				write.for_each(|event| inbound::process_incoming_message(event, &uuid, false)).await;
-				PLUGIN_SOCKETS.lock().await.remove(&uuid);
+				// Only clean up if no newer connection has replaced ours
+				let mut g = PLUGIN_CONN_GEN.lock().await;
+				if g.get(&uuid) == Some(&generation) {
+					g.remove(&uuid);
+					PLUGIN_SOCKETS.lock().await.remove(&uuid);
+				}
 			});
 		}
 		RegisterEvent::RegisterPropertyInspector { uuid } => {
@@ -49,10 +64,21 @@ pub async fn register_plugin(event: RegisterEvent, stream: WebSocketStream<TcpSt
 				let _ = read.flush().await;
 			}
 			PROPERTY_INSPECTOR_SOCKETS.lock().await.insert(uuid.clone(), read);
+			let generation = {
+				let mut g = PI_CONN_GEN.lock().await;
+				let e = g.entry(uuid.clone()).or_insert(0);
+				*e += 1;
+				*e
+			};
 			tokio::spawn(async move {
 				let uuid = uuid;
 				write.for_each(|event| inbound::process_incoming_message_pi(event, &uuid)).await;
-				PROPERTY_INSPECTOR_SOCKETS.lock().await.remove(&uuid);
+				// Only clean up if no newer connection has replaced ours
+				let mut g = PI_CONN_GEN.lock().await;
+				if g.get(&uuid) == Some(&generation) {
+					g.remove(&uuid);
+					PROPERTY_INSPECTOR_SOCKETS.lock().await.remove(&uuid);
+				}
 			});
 		}
 	};
