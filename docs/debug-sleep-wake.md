@@ -106,6 +106,34 @@ Plugin logs: %LOCALAPPDATA%/opendeck/logs/plugins/<uuid>.log
 
 4. **Spawner thread stuck:** If the `std::sync::mpsc::Receiver` in the spawner thread is blocked on a previous spawn, new requests are queued but not processed.
 
+## Fix 3: Atomic socket registration + webview reload (2026-06-30)
+
+Two root causes identified and fixed:
+
+### Fix 3a: Webview window close+recreate race (`power_events.rs`)
+
+**Root cause:** `deactivate_plugins()` → `deactivate_plugin()` called `window.close()` on webview windows, then `initialise_plugin()` called `WebviewWindowBuilder::new()` with the **same label**. Tauri returns the existing (stale) window when a label already exists — the page is never reloaded. The JS eval creates a new WebSocket, but the clock's `setInterval` (running via the Stream Deck SDK's dead Web Worker) remains frozen.
+
+**Fix:** Split the wake recovery path:
+- **Webview plugins:** use `reload_webview_plugins()` — keeps the window handle, reloads the page via `window.reload()`, restores native timers via the iframe trick, and reconnects the WebSocket.
+- **Native plugins:** kill via `deactivate_plugin()` + spawn fresh via `initialise_plugin()`.
+
+### Fix 3b: Socket/generation race condition (`events/mod.rs`)
+
+**Root cause:** `PLUGIN_SOCKETS` (socket map) and `PLUGIN_CONN_GEN` (generation counter) used separate locks. An old cleanup task could check the generation under one lock, then a new connection could insert a socket AND increment the generation, then the old cleanup removes the entry under the other lock — removing the NEW socket.
+
+**Fix:** Merged socket and generation into a single `ConnEntry { socket, generation }` struct under one `Mutex`. Insert + generation increment happen atomically, and the cleanup check also happens atomically under the same lock.
+
+### Fix 3c: `system_did_wake_up()` moved after plugin recovery
+
+Previously this event was sent BEFORE plugin recovery (in the main `handle_wake()`), hitting dead WebSocket connections — the event was lost. Moved to after plugin recovery inside the spawned task, so it hits live connections.
+
+### Files changed
+- `src-tauri/src/events/mod.rs` — merged `PLUGIN_SOCKETS`/`PLUGIN_CONN_GEN` into `ConnEntry`
+- `src-tauri/src/events/outbound/mod.rs` — updated socket field access
+- `src-tauri/src/power_events.rs` — split webview/native recovery, moved `system_did_wake_up()`
+- `src-tauri/src/plugins/mod.rs` — made `PluginInstance` and `INSTANCES` public
+
 ## Debug Checklist
 
 - [ ] After wake, check Task Manager for `opendeck-akp153-win.exe` process
