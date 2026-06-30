@@ -302,8 +302,22 @@ beforeBuildCommand: "npm run build"
 
 Don't forget to revert this change before committing (see `#pre-commit-requirements` above).
 
+## Branch Workflow Rules
+
+- **dev** is the primary development branch. All new features are developed here.
+- **sync-upstream** tracks upstream code (in `OpenDeck-upstream` worktree) — never commit changes here, only `git fetch upstream && git merge upstream/main`.
+- Use `docs:` prefix for documentation commits, `chore:` for config changes — these are filtered when merging to main.
+- Only absorb fixes via `git merge debug`. Never push dev changes to debug.
+- To cherry-pick upstream changes: `git log dev..sync-upstream --oneline` → `git cherry-pick <commit>` in dev worktree.
+- Sync upstream periodically: `git fetch upstream && git merge upstream/main`.
+- See [`docs/workflow-guide.md`](docs/workflow-guide.md) for the full multi-branch workflow.
+
 ## Bug Fix Log
 
 See [`docs/bug-fixes.md`](docs/bug-fixes.md) for a running log of bugs found and fixed during development, including root causes, fixes, and lessons learned. **Before fixing any bug, check that file first** — the same issue (or a similar pattern) may have been encountered before.
 
 When a bug fix is confirmed working, add a new entry to `docs/bug-fixes.md` with: symptom, root cause, fix, and lesson learned.
+
+## Active Debugging Sessions
+
+See [`docs/debug-sleep-wake.md`](docs/debug-sleep-wake.md) — ongoing sleep/wake recovery issue for onairclock and akp153 plugins (2026-06-30). Contains file index, log paths, fix attempts, and remaining hypotheses.
