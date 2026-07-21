@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+### Bug Fixes
+
+- **2026-07-21**: Fix Stream Deck frozen after system sleep — `handle_wake()` now force re-enumerates devices via `reinitialise_devices()` instead of skipping re-connection of devices still present in `ELGATO_DEVICES` with a stale USB handle. A device epoch counter lets superseded reader loops exit without deregistering the freshly re-added device, so the device is recovered on every wake instead of being lost permanently. Also migrate profiles saved under a legacy device id (`99-<serial>-153`) to the current `sd-<serial>` scheme on startup so upgrades don't orphan existing configuration.
+
 ## [2.12.2] - 2026-06-22
 
 ### Bug Fixes

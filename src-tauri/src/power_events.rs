@@ -51,9 +51,7 @@ async fn handle_wake() -> Result<(), anyhow::Error> {
 
 	log::info!("System wake detected via psp, reinitialising devices");
 
-	crate::elgato::invalidate_hidapi().await;
-	tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-	crate::elgato::initialise_devices().await;
+	crate::elgato::reinitialise_devices().await;
 
 	for device in crate::shared::DEVICES.iter() {
 		let _ = crate::device_sleep::note_activity(&device.id).await;
