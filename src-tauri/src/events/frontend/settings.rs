@@ -8,11 +8,48 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use path_slash::PathExt;
+use semver::Version;
+use serde_json::Value;
 use tauri::{AppHandle, Manager, command};
 #[cfg(not(debug_assertions))]
 use tauri_plugin_autostart::ManagerExt;
 use tauri_plugin_dialog::{DialogExt, FilePath};
 use zip::{ZipWriter, write::FileOptions};
+
+#[command]
+pub async fn check_for_update(app: AppHandle) -> Result<(), Error> {
+	let res = reqwest::Client::new()
+		.get("https://api.github.com/repos/GDWhisper/OpenDeck-Win/releases/latest")
+		.header("Accept", "application/vnd.github+json")
+		.header("User-Agent", "OpenDeck")
+		.send()
+		.await
+		.map_err(|e| Error::new(format!("Failed to check for updates: {e}")))?;
+	if !res.status().is_success() {
+		return Err(Error::new(format!("GitHub API returned status {}", res.status())));
+	}
+	let res: Value = res.json().await.map_err(|e| Error::new(format!("Failed to parse update response: {e}")))?;
+	let Some(tag_name) = res.get("tag_name").and_then(|v| v.as_str()) else {
+		return Err(Error::new("Update response missing tag_name".to_owned()));
+	};
+	if Version::parse(built_info::PKG_VERSION).ok().and_then(|current| Version::parse(&tag_name[1..]).ok().map(|latest| current < latest)).unwrap_or(false) {
+		app.dialog()
+			.message(format!(
+				"A new version of {PRODUCT_NAME}, {}, is available.\nUpdate description:\n\n{}",
+				tag_name,
+				res.get("body").and_then(|v| v.as_str()).unwrap_or("No description").trim()
+			))
+			.title(format!("{PRODUCT_NAME} update available"))
+			.show(|_| ());
+	} else {
+		app.dialog()
+			.message(format!("{PRODUCT_NAME} is up to date (v{}).", built_info::PKG_VERSION))
+			.title(format!("{PRODUCT_NAME} update check"))
+			.show(|_| ());
+	}
+
+	Ok(())
+}
 
 #[command]
 pub async fn get_settings() -> crate::store::Settings {

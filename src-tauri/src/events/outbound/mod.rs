@@ -56,18 +56,28 @@ impl GenericInstancePayload {
 
 async fn send_to_plugin(plugin: &str, data: &impl Serialize) -> Result<(), anyhow::Error> {
 	let message = tokio_tungstenite::tungstenite::Message::Text(serde_json::to_string(data)?.into());
-	let mut sockets = super::PLUGIN_SOCKETS.lock().await;
 
-	if let Some(socket) = sockets.get_mut(plugin) {
-		socket.send(message).await?;
-	} else {
-		let mut queues = super::PLUGIN_QUEUES.write().await;
-		if queues.contains_key(plugin) {
-			queues.get_mut(plugin).unwrap().push(message);
-		} else {
-			queues.insert(plugin.to_owned(), vec![message]);
-		}
-	}
+	// Bound the lock-hold time with a timeout so a dead socket can't
+	// permanently block other senders or plugin registration.
+	tokio::time::timeout(
+		std::time::Duration::from_secs(5),
+		async {
+			let mut sockets = super::PLUGIN_SOCKETS.lock().await;
+			if let Some(entry) = sockets.get_mut(plugin) {
+				entry.socket.send(message).await.map_err(anyhow::Error::new)
+			} else {
+				let mut queues = super::PLUGIN_QUEUES.write().await;
+				if queues.contains_key(plugin) {
+					queues.get_mut(plugin).unwrap().push(message);
+				} else {
+					queues.insert(plugin.to_owned(), vec![message]);
+				}
+				Ok(())
+			}
+		},
+	)
+	.await
+	.map_err(|_| anyhow::anyhow!("plugin socket send timed out"))??;
 
 	Ok(())
 }
@@ -92,8 +102,8 @@ async fn send_to_property_inspector(context: &crate::shared::ActionContext, data
 	let message = tokio_tungstenite::tungstenite::Message::Text(serde_json::to_string(data)?.into());
 	let mut sockets = super::PROPERTY_INSPECTOR_SOCKETS.lock().await;
 
-	if let Some(socket) = sockets.get_mut(&context.to_string()) {
-		socket.send(message).await?;
+	if let Some(entry) = sockets.get_mut(&context.to_string()) {
+		entry.socket.send(message).await?;
 	} else {
 		let mut queues = super::PROPERTY_INSPECTOR_QUEUES.write().await;
 		if queues.contains_key(&context.to_string()) {

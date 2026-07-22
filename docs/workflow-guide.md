@@ -11,10 +11,11 @@
 | `G:/Codes/opendeck/OpenDeck` | `main` | 最终发布，永远干净 | 无需常驻服务 |
 | `G:/Codes/opendeck/OpenDeck-dev` | `dev` | 日常功能开发、集成 | Vite: 5173 |
 | `G:/Codes/opendeck/OpenDeck-debug` | `debug` | 紧急 bug 修复 | Vite: 5174 |
+| `G:/Codes/opendeck/OpenDeck-upstream` | `sync-upstream` | 跟踪上游官方代码，仅拉取不推送 | 无需常驻服务 |
 
 > **初始化命令**（仅需执行一次）：
 > ```bash
-> # 在 main 工作树中创建 dev 和 debug worktree
+> # 在 main 工作树中创建 dev、debug 和 upstream worktree
 > cd G:/Codes/opendeck/OpenDeck
 >
 > # 创建 dev worktree（基于 main）
@@ -22,6 +23,9 @@
 >
 > # 创建 debug worktree（基于 dev）
 > git worktree add ../OpenDeck-debug -b debug dev
+>
+> # 创建 upstream worktree（基于上游 upstream/main）
+> git worktree add ../OpenDeck-upstream -b sync-upstream upstream/main
 > ```
 
 ### Tauri 开发端口说明
@@ -40,25 +44,38 @@ OpenDeck 使用 Tauri，前端通过 Vite dev server 提供 HMR，后端是 Rust
 
 | 远程 | 仓库 | 用途 |
 |------|------|------|
-| `origin` | GDWhisper/OpenDeck-Win | 你的 fork，日常 push/pull 所有分支 |
+| `origin` | GDWhisper/OpenDeck | 你的 fork，日常 push/pull 所有分支 |
 | `upstream` | nekename/OpenDeck | 上游原仓库，用于同步更新 |
 
 ```bash
 # 已配置（当前状态）
-origin    → https://github.com/GDWhisper/OpenDeck-Win.git
+origin    → https://github.com/GDWhisper/OpenDeck.git
 upstream  → https://github.com/nekename/OpenDeck.git
 ```
 
 ### 同步上游更新
 
 ```bash
-# 在 main 工作树中拉取上游最新
+# 方式一：在 main 工作树中拉取上游最新（仅合入 main）
 cd G:/Codes/opendeck/OpenDeck
 git fetch upstream
-git merge upstream/main   # 或 git rebase upstream/main
-
-# 推送到自己的 fork
+git merge upstream/main
 git push origin main
+```
+
+```bash
+# 方式二：在 upstream 工作树中拉取上游代码，再 cherry-pick 到 dev（推荐）
+# 上游代码仅拉取，不做任何修改提交
+cd G:/Codes/opendeck/OpenDeck-upstream
+git fetch upstream
+git merge upstream/main
+
+# 查看上游新增了哪些提交
+git log dev..sync-upstream --oneline
+
+# 切到 dev 工作树，cherry-pick 需要的提交
+cd G:/Codes/opendeck/OpenDeck-dev
+git cherry-pick <需要的提交>
 ```
 
 ---
@@ -74,6 +91,8 @@ git push origin main
 | 吸收 debug 修复 | `OpenDeck-dev` | `git merge debug` |
 | 吸收 dev 开发成果 | `OpenDeck` (main) | `git cherry-pick <commit>`（过滤文档提交）|
 | 同步 dev 最新到 debug | `OpenDeck-debug` | `git merge dev`（仅用于拉取参考代码）|
+| 同步上游代码到 sync-upstream | `OpenDeck-upstream` | `git fetch upstream && git merge upstream/main` |
+| 从上游摘取提交到 dev | `OpenDeck-dev` | `git cherry-pick <commit>` |
 
 ### 合并时的文件过滤
 
@@ -267,6 +286,26 @@ git rebase -i main   # 在 dev 上删除 docs/chore 提交
 - 禁止 `git reset --hard` 或 `--force`
 ```
 
+### sync-upstream (`OpenDeck-upstream/AGENTS.md`) — 上游跟踪
+
+```markdown
+# OpenDeck 上游同步分支规则
+
+> 仅用于跟踪上游代码，不做任何开发提交。
+
+## 工作流
+
+1. 拉取上游最新：`git fetch upstream && git merge upstream/main`
+2. 查看新增提交：`git log dev..sync-upstream --oneline`
+3. 切到 dev 工作树执行 cherry-pick：`git cherry-pick <提交>`
+
+## 核心原则
+
+- **永远不在本工作树做任何修改提交**
+- 仅用于对比上游差异和 cherry-pick
+- 需要提交 PR 到上游时，从 dev 或单独的特性分支提交
+```
+
 ---
 
 ## 九、快速参考
@@ -284,11 +323,13 @@ git worktree add ../OpenDeck-debug -b debug dev
 git worktree remove ../OpenDeck-debug
 
 # 在 worktree 间切换（实际是 cd 到对应目录）
-cd G:/Codes/opendeck/OpenDeck          # main
-cd G:/Codes/opendeck/OpenDeck-dev      # dev
-cd G:/Codes/opendeck/OpenDeck-debug    # debug
+cd G:/Codes/opendeck/OpenDeck              # main
+cd G:/Codes/opendeck/OpenDeck-dev          # dev
+cd G:/Codes/opendeck/OpenDeck-debug        # debug
+cd G:/Codes/opendeck/OpenDeck-upstream     # sync-upstream（上游跟踪）
 
-# 同步上游
+# 同步上游（upstream 工作树）
+cd G:/Codes/opendeck/OpenDeck-upstream
 git fetch upstream
 git merge upstream/main
 ```

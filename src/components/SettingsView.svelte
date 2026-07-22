@@ -118,12 +118,6 @@
 				{/if}
 			</Tooltip>
 		</div>
-
-		<div class="flex flex-row items-center m-2 space-x-2">
-			<label for="settings-updatecheck" class="text-neutral-400">{$t("settings.checkForUpdates")}</label>
-			<input type="checkbox" bind:checked={$settings.updatecheck} id="settings-updatecheck" />
-		</div>
-
 		{#if !buildInfo?.split("</summary>")[0]?.includes("windows")}
 			<div class="flex flex-row items-center m-2 space-x-2">
 				<label for="settings-separatewine" class="text-neutral-400">{$t("settings.separateWinePrefixes")}</label>
@@ -150,6 +144,13 @@
 	{/if}
 
 	<div class="ml-2">
+		<button
+			class="flex flex-row items-center px-2 py-1 text-sm text-neutral-300 bg-neutral-700 hover:bg-neutral-600 transition-colors border border-neutral-600 rounded-lg"
+			on:click={() => invoke("check_for_update")}
+		>
+			<ClockClockwise class="mr-1" />
+			{$t("settings.checkForUpdates")}
+		</button>
 		<div class="flex flex-row my-3 space-x-2">
 			<button
 				class="flex flex-row items-center px-2 py-1 text-sm text-neutral-300 bg-neutral-700 hover:bg-neutral-600 transition-colors border border-neutral-600 rounded-lg"

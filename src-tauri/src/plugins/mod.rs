@@ -26,7 +26,7 @@ pub enum PluginChildType {
 	Node,
 }
 
-enum PluginInstance {
+pub enum PluginInstance {
 	Webview,
 	Wine(Child),
 	Native(Child),
@@ -34,7 +34,7 @@ enum PluginInstance {
 }
 
 pub static DEVICE_NAMESPACES: LazyLock<RwLock<HashMap<String, String>>> = LazyLock::new(|| RwLock::new(HashMap::new()));
-static INSTANCES: LazyLock<Mutex<HashMap<String, PluginInstance>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
+pub static INSTANCES: LazyLock<Mutex<HashMap<String, PluginInstance>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
 
 pub static PORT_BASE: LazyLock<u16> = LazyLock::new(|| {
 	let mut base = 57116;

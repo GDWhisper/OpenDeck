@@ -2,6 +2,7 @@ use crate::events::inbound;
 
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::LazyLock;
 
 use base64::Engine as _;
@@ -15,6 +16,12 @@ use tokio::sync::RwLock;
 
 static ELGATO_DEVICES: LazyLock<RwLock<HashMap<String, AsyncStreamDeck>>> = LazyLock::new(|| RwLock::new(HashMap::new()));
 static HIDAPI: LazyLock<RwLock<Option<Arc<hidapi::HidApi>>>> = LazyLock::new(|| RwLock::new(None));
+
+/// Bumped on every (re)initialisation of the device set.  Stale device reader
+/// loops spawned for a previous USB state capture the epoch they were started
+/// with; when the epoch changes they exit without deregistering the freshly
+/// re-added device.  See [`reinitialise_devices`] and [`init`].
+static DEVICE_EPOCH: LazyLock<AtomicU64> = LazyLock::new(|| AtomicU64::new(0));
 
 /// Extract the average colour from an image.
 fn extract_average_colour(img: &image::DynamicImage) -> (u8, u8, u8) {
@@ -101,6 +108,10 @@ pub async fn reset_devices() {
 }
 
 async fn init(device: AsyncStreamDeck, device_id: String) {
+	// Capture the epoch so a later re-initialisation (e.g. after system wake)
+	// can tell us apart from the freshly re-added device and stop us from
+	// deregistering it out from under the new reader loop.
+	let epoch = DEVICE_EPOCH.load(Ordering::SeqCst);
 	if ELGATO_DEVICES.read().await.contains_key(&device_id) {
 		return;
 	}
@@ -149,6 +160,13 @@ async fn init(device: AsyncStreamDeck, device_id: String) {
 		},
 	};
 	loop {
+		// A re-initialisation bumped the epoch, meaning a fresh reader loop now
+		// owns this device with a clean handle.  Exit without touching the
+		// registry so we don't tear down the new device.
+		if DEVICE_EPOCH.load(Ordering::SeqCst) != epoch {
+			log::info!("Device {} reader loop superseded by re-init, exiting", device_id);
+			break;
+		}
 		let updates = match reader.read(100.0).await {
 			Ok(updates) => updates,
 			Err(e) => {
@@ -173,11 +191,13 @@ async fn init(device: AsyncStreamDeck, device_id: String) {
 		}
 	}
 
-	log::info!("Device {} disconnected, deregistering", device_id);
-	ELGATO_DEVICES.write().await.remove(&device_id);
-	crate::events::inbound::devices::deregister_device("", crate::events::inbound::PayloadEvent { payload: device_id })
-		.await
-		.unwrap();
+	if DEVICE_EPOCH.load(Ordering::SeqCst) == epoch {
+		log::info!("Device {} disconnected, deregistering", device_id);
+		ELGATO_DEVICES.write().await.remove(&device_id);
+		crate::events::inbound::devices::deregister_device("", crate::events::inbound::PayloadEvent { payload: device_id })
+			.await
+			.unwrap();
+	}
 }
 
 /// Invalidate the cached `HidApi` instance.
@@ -220,6 +240,9 @@ pub async fn initialise_devices() {
 	};
 	for (kind, serial) in elgato_streamdeck::asynchronous::list_devices_async(&hid) {
 		let device_id = format!("sd-{serial}");
+		// Bring over any profiles saved under a legacy device id for this serial
+		// so an upgrade doesn't orphan the user's existing configuration.
+		migrate_legacy_device_profiles(&serial, &device_id);
 		if ELGATO_DEVICES.read().await.contains_key(&device_id) {
 			continue;
 		}
@@ -230,4 +253,74 @@ pub async fn initialise_devices() {
 			Err(error) => log::warn!("Failed to connect to Elgato device: {error}"),
 		}
 	}
+}
+
+/// Migrate profile/image directories and the device config file from a legacy
+/// device id to the current id.
+///
+/// Older builds registered devices under a different id scheme (e.g.
+/// `99-<serial>-153`); current builds use `sd-<serial>`.  Without this, an
+/// upgrade would orphan the user's existing profiles.  The legacy id embeds the
+/// hardware `serial`, which is stable across both schemes, so we match on it.
+fn migrate_legacy_device_profiles(serial: &str, new_id: &str) {
+	if serial.is_empty() {
+		return;
+	}
+	let config = crate::shared::config_dir();
+	for sub in ["profiles", "images"] {
+		let base = config.join(sub);
+		let entries = match std::fs::read_dir(&base) {
+			Ok(entries) => entries,
+			Err(_) => continue,
+		};
+		for entry in entries.flatten() {
+			let name = entry.file_name().to_string_lossy().into_owned();
+			if name == new_id || !name.contains(serial) {
+				continue;
+			}
+			let old_id = name.clone();
+			let new_path = base.join(new_id);
+			// Rewrite the device id inside any profile JSON so saved action
+			// contexts keep pointing at the (re-registered) device.
+			if entry.path().is_dir() {
+				if let Ok(files) = std::fs::read_dir(&entry.path()) {
+					for f in files.flatten() {
+						let p = f.path();
+						if p.extension().and_then(|e| e.to_str()) == Some("json") {
+							if let Ok(text) = std::fs::read_to_string(&p) {
+								let _ = std::fs::write(&p, text.replace(&old_id, new_id));
+							}
+						}
+					}
+				}
+			} else if entry.path().extension().and_then(|e| e.to_str()) == Some("json") {
+				if let Ok(text) = std::fs::read_to_string(&entry.path()) {
+					let _ = std::fs::write(&entry.path(), text.replace(&old_id, new_id));
+				}
+			}
+			if std::fs::rename(&entry.path(), &new_path).is_ok() {
+				log::info!("Migrated legacy device profile {} -> {}", old_id, new_id);
+			}
+		}
+	}
+}
+
+/// Force a full re-enumeration of all connected devices.
+///
+/// Called after system sleep/wake, when the USB subsystem has re-enumerated
+/// devices and the cached `HidApi` handles are stale.  We bump the device epoch
+/// (so any in-flight reader loops from the previous USB state exit without
+/// deregistering the freshly re-added device), drop the stale handles, then
+/// re-list and reconnect everything.
+pub async fn reinitialise_devices() {
+	DEVICE_EPOCH.fetch_add(1, Ordering::SeqCst);
+	ELGATO_DEVICES.write().await.clear();
+	// Let superseded reader loops observe the epoch change and exit before we
+	// recreate handles, so we don't race over the device registry.
+	tokio::time::sleep(std::time::Duration::from_millis(250)).await;
+	invalidate_hidapi().await;
+	// USB devices often need a few seconds to re-enumerate after the system
+	// resumes; wait before reconnecting.
+	tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+	initialise_devices().await;
 }
