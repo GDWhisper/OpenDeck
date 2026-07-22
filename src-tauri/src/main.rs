@@ -131,6 +131,7 @@ async fn main() {
 			frontend::plugins::show_settings_interface,
 			frontend::settings::get_settings,
 			frontend::settings::set_settings,
+			frontend::settings::check_for_update,
 			frontend::settings::open_config_directory,
 			frontend::settings::open_log_directory,
 			frontend::settings::get_build_info,
@@ -278,41 +279,9 @@ If you have already donated, thank you so much for your support!"#,
 				let _ = app.deep_link().register_all();
 			}
 
-			async fn update() -> Result<(), anyhow::Error> {
-				let res = reqwest::Client::new()
-					.get("https://api.github.com/repos/GDWhisper/OpenDeck-Win/releases/latest")
-					.header("Accept", "application/vnd.github+json")
-					.header("User-Agent", "OpenDeck")
-					.send()
-					.await?
-					.json::<serde_json::Value>()
-					.await?;
-				let tag_name = res.get("tag_name").unwrap().as_str().unwrap();
-				if semver::Version::parse(built_info::PKG_VERSION)?.cmp(&semver::Version::parse(&tag_name[1..])?) == Ordering::Less {
-					let app = APP_HANDLE.get().unwrap();
-					app.dialog()
-						.message(format!(
-							"A new version of {PRODUCT_NAME}, {}, is available.\nUpdate description:\n\n{}",
-							tag_name,
-							res.get("body").map(|v| v.as_str().unwrap()).unwrap_or("No description").trim()
-						))
-						.title(format!("{PRODUCT_NAME} update available"))
-						.show(|_| ());
-				}
-
-				Ok(())
-			}
-
-			if settings.value.updatecheck {
-				tokio::spawn(async {
-					if let Err(error) = update().await {
-						log::warn!("Failed to update application: {error}");
-					}
-				});
-			}
-
 			Ok(())
 		})
+
 		.plugin(
 			tauri_plugin_log::Builder::default()
 				.targets([Target::new(TargetKind::LogDir { file_name: None }), Target::new(TargetKind::Stdout)])
